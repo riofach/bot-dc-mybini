@@ -1,0 +1,33 @@
+{
+  "name": "mybini-discord-bot",
+  "version": "1.0.0",
+  "description": "MyBini - Discord AI Chatbot with Tsundere Personality",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "@google/generative-ai": "^0.21.0",
+    "groq-sdk": "^0.5.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "ai",
+    "chatbot",
+    "gemini",
+    "groq"
+  ],
+  "author": "",
+  "license": "MIT"
+}
