@@ -43,7 +43,7 @@ export async function handleMessage(message, client) {
 
   // Handle empty message
   if (!userMessage) {
-    await message.reply("Ara ara~ kamu manggil Kakak tapi gak bilang apa-apa? Ada yang bisa Kakak bantu, Sayang~? 💕");
+    await message.reply("Halo! Ada yang bisa aku bantu? 😊");
     return;
   }
 

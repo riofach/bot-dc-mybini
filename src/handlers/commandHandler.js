@@ -224,7 +224,7 @@ async function handleSwitch(interaction) {
   try {
     const result = switchProvider(api);
     await interaction.reply({
-      content: `✅ Switched: **${result.previous.toUpperCase()}** → **${result.current.toUpperCase()}**\n\n*Ara ara~ Kakak pakai ${api.toUpperCase()} sekarang ya, Master~* 💕`,
+      content: `✅ Switched: **${result.previous.toUpperCase()}** → **${result.current.toUpperCase()}**\n\nSekarang pakai ${api.toUpperCase()} ya!`,
       ephemeral: true,
     });
     log.discord(`API switched to ${api}`);
@@ -245,12 +245,12 @@ async function handleClear(interaction) {
 
   if (cleared) {
     await interaction.reply({
-      content: '🧹 Memory cleared!\n\n*Ara ara~ Kakak lupa percakapan kita, tapi tetap ingat kamu kok~* 💕',
+      content: '🧹 Memory cleared! Percakapan di channel ini sudah dihapus.',
       ephemeral: true,
     });
   } else {
     await interaction.reply({
-      content: '📭 Gak ada memory di channel ini~\n\n*Ufufu~ memang belum ada yang perlu di-clear, Master~* 🌸',
+      content: '📭 Gak ada memory di channel ini yang perlu dihapus.',
       ephemeral: true,
     });
   }
@@ -271,7 +271,7 @@ async function handlePing(interaction) {
   const wsLatency = interaction.client.ws.ping;
 
   await interaction.editReply({
-    content: `🏓 **Pong!**\n\n📡 Latency: **${latency}ms**\n💓 WebSocket: **${wsLatency}ms**\n\n*Ara ara~ Kakak cepat kan, Master~* 💕`,
+    content: `🏓 **Pong!**\n\n📡 Latency: **${latency}ms**\n💓 WebSocket: **${wsLatency}ms**`,
   });
   log.discord(`Ping: ${latency}ms`);
 }
