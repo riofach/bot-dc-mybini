@@ -1,6 +1,6 @@
 /**
  * Command Handler
- * Register and handle owner slash commands
+ * Register and handle slash commands
  */
 
 import { REST, Routes, SlashCommandBuilder } from 'discord.js';
@@ -9,6 +9,7 @@ import { getCurrentProvider, switchProvider, getStats } from '../services/aiServ
 import { getCurrentKeyIndex as getGeminiKeyIndex, getTotalKeys as getGeminiTotalKeys } from '../services/geminiService.js';
 import { getCurrentKeyIndex as getGroqKeyIndex, getTotalKeys as getGroqTotalKeys } from '../services/groqService.js';
 import { clearChannel, getMemoryStats } from '../services/memoryService.js';
+import { getGoldPriceEmbed } from '../services/goldService.js';
 import { getUnauthorizedResponse } from '../utils/personality.js';
 import { log } from '../utils/logger.js';
 
@@ -21,16 +22,16 @@ const startTime = Date.now();
 const commands = [
   new SlashCommandBuilder()
     .setName('mybini')
-    .setDescription('MyBini bot commands (Owner only)')
+    .setDescription('MyBini bot commands')
     .addSubcommand(subcommand =>
       subcommand
         .setName('status')
-        .setDescription('Show bot status, uptime, and API info')
+        .setDescription('Show bot status, uptime, and API info (Owner only)')
     )
     .addSubcommand(subcommand =>
       subcommand
         .setName('switch')
-        .setDescription('Switch primary AI provider')
+        .setDescription('Switch primary AI provider (Owner only)')
         .addStringOption(option =>
           option
             .setName('api')
@@ -45,12 +46,17 @@ const commands = [
     .addSubcommand(subcommand =>
       subcommand
         .setName('clear')
-        .setDescription('Clear conversation memory for this channel')
+        .setDescription('Clear conversation memory for this channel (Owner only)')
     )
     .addSubcommand(subcommand =>
       subcommand
         .setName('ping')
         .setDescription('Check bot latency')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('emas')
+        .setDescription('Lihat harga emas hari ini 📊')
     ),
 ];
 
@@ -96,21 +102,20 @@ function formatUptime(ms) {
  * Handle slash command interaction
  */
 export async function handleCommand(interaction) {
-  // Use isChatInputCommand for discord.js v14
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
   
-  log.discord(`Command received: /${commandName}`);
-
   if (commandName !== 'mybini') return;
 
   const subcommand = interaction.options.getSubcommand();
-  log.discord(`Subcommand: ${subcommand} by ${interaction.user.tag}`);
+  log.discord(`Command: /mybini ${subcommand} by ${interaction.user.tag}`);
 
-  // Check if user is owner
-  if (interaction.user.id !== config.ownerId) {
-    log.discord(`Unauthorized: ${interaction.user.id} != ${config.ownerId}`);
+  // Commands that don't require owner
+  const publicCommands = ['ping', 'emas'];
+
+  // Check if user is owner for restricted commands
+  if (!publicCommands.includes(subcommand) && interaction.user.id !== config.ownerId) {
     await interaction.reply({
       content: getUnauthorizedResponse(),
       ephemeral: true,
@@ -132,6 +137,9 @@ export async function handleCommand(interaction) {
       case 'ping':
         await handlePing(interaction);
         break;
+      case 'emas':
+        await handleGold(interaction);
+        break;
       default:
         await interaction.reply({
           content: 'Unknown subcommand!',
@@ -141,15 +149,14 @@ export async function handleCommand(interaction) {
   } catch (error) {
     console.error('[COMMANDS] Error:', error);
     
-    // Check if already replied
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({
-        content: 'Ara ara~ ada sedikit masalah nih... Coba lagi ya~ 💕',
+        content: 'Maaf, ada error. Coba lagi ya!',
         ephemeral: true,
       });
     } else {
       await interaction.reply({
-        content: 'Ara ara~ ada sedikit masalah nih... Coba lagi ya~ 💕',
+        content: 'Maaf, ada error. Coba lagi ya!',
         ephemeral: true,
       });
     }
@@ -164,7 +171,6 @@ async function handleStatus(interaction) {
   const stats = getStats();
   const memoryStats = getMemoryStats();
 
-  // Get API key info
   const geminiKeyInfo = `Key ${getGeminiKeyIndex() + 1}/${getGeminiTotalKeys()}`;
   const groqKeyInfo = `Key ${getGroqKeyIndex() + 1}/${getGroqTotalKeys()}`;
 
@@ -204,9 +210,7 @@ async function handleStatus(interaction) {
       },
     ],
     footer: {
-      text: stats.lastError
-        ? `Last Error: ${stats.lastError.provider}`
-        : 'No errors',
+      text: stats.lastError ? `Last Error: ${stats.lastError.provider}` : 'No errors',
     },
     timestamp: new Date().toISOString(),
   };
@@ -274,6 +278,29 @@ async function handlePing(interaction) {
     content: `🏓 **Pong!**\n\n📡 Latency: **${latency}ms**\n💓 WebSocket: **${wsLatency}ms**`,
   });
   log.discord(`Ping: ${latency}ms`);
+}
+
+/**
+ * Handle /mybini emas - Gold Price Command (PUBLIC)
+ */
+async function handleGold(interaction) {
+  await interaction.deferReply(); // Gold fetch might take a while
+
+  try {
+    const embed = await getGoldPriceEmbed();
+    
+    await interaction.editReply({
+      content: '💰 **Harga Emas Terkini**',
+      embeds: [embed],
+    });
+
+    log.discord('Gold price command executed');
+  } catch (error) {
+    console.error('[GOLD] Error:', error);
+    await interaction.editReply({
+      content: '⚠️ Maaf, gagal mengambil data harga emas. Coba lagi nanti ya!',
+    });
+  }
 }
 
 export default { registerCommands, handleCommand };

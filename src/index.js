@@ -8,6 +8,7 @@ import { config } from './config/config.js';
 import { handleMessage } from './handlers/messageHandler.js';
 import { registerCommands, handleCommand } from './handlers/commandHandler.js';
 import { startCleanupInterval } from './services/memoryService.js';
+import { startScheduler, stopScheduler } from './services/schedulerService.js';
 import { log } from './utils/logger.js';
 
 // Create Discord client
@@ -30,8 +31,11 @@ client.once(Events.ClientReady, async (c) => {
   // Start memory cleanup interval
   startCleanupInterval();
 
+  // Start scheduled tasks (gold price broadcast)
+  startScheduler(client);
+
   // Set bot status
-  client.user.setActivity('for @MyBini mentions', { type: 3 }); // Type 3 = Watching
+  client.user.setActivity('for @MyBini | /mybini emas', { type: 3 });
 });
 
 // Message event
@@ -46,27 +50,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Error handling
 client.on(Events.Error, (error) => {
-  log.error('DISCORD', `Client error: ${error.message}`, error);
+  log.error('DISCORD', `Client error: ${error.message}`);
 });
 
 process.on('unhandledRejection', (error) => {
-  log.error('PROCESS', `Unhandled rejection: ${error.message}`, error);
+  log.error('PROCESS', `Unhandled rejection: ${error.message}`);
 });
 
 process.on('uncaughtException', (error) => {
-  log.error('PROCESS', `Uncaught exception: ${error.message}`, error);
+  log.error('PROCESS', `Uncaught exception: ${error.message}`);
   process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-  log.info('PROCESS', 'Received SIGINT, shutting down...');
+  log.info('PROCESS', 'Shutting down...');
+  stopScheduler();
   client.destroy();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  log.info('PROCESS', 'Received SIGTERM, shutting down...');
+  log.info('PROCESS', 'Shutting down...');
+  stopScheduler();
   client.destroy();
   process.exit(0);
 });
