@@ -36,6 +36,11 @@ const groqApiKeys = parseApiKeys(process.env.GROQ_API_KEY);
 
 console.log(`[CONFIG] Gemini: ${geminiApiKeys.length} key(s) | Groq: ${groqApiKeys.length} key(s)`);
 
+// Gold broadcast channel (optional)
+if (process.env.GOLD_CHANNEL_ID) {
+  console.log(`[CONFIG] Gold broadcast channel: ${process.env.GOLD_CHANNEL_ID}`);
+}
+
 export const config = {
   discord: {
     token: process.env.DISCORD_BOT_TOKEN,
@@ -48,10 +53,17 @@ export const config = {
 
   groq: {
     apiKeys: groqApiKeys,
-    model: 'llama-3.3-70b-versatile', // Upgraded: lebih pintar dari 8b
+    model: 'llama-3.3-70b-versatile',
   },
 
   ownerId: process.env.OWNER_ID,
+
+  // Gold price broadcast settings
+  gold: {
+    channelId: process.env.GOLD_CHANNEL_ID || null,
+    broadcastTime: '0 7 * * *', // 07:00 every day
+    timezone: 'Asia/Jakarta',
+  },
 
   memory: {
     maxMessages: 10,

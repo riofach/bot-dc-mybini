@@ -4,23 +4,52 @@
  */
 
 import cron from 'node-cron';
+import { config } from '../config/config.js';
 import { getGoldPriceEmbed } from './goldService.js';
 import { log } from '../utils/logger.js';
 
-// Channel ID for gold price broadcast
-const GOLD_BROADCAST_CHANNEL = '146222493237628523';
-
 let scheduledTasks = [];
+let discordClient = null;
+
+/**
+ * Validate channel exists and bot has access
+ */
+async function validateChannel(client, channelId) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel) {
+      return { valid: false, error: 'Channel not found' };
+    }
+    if (!channel.isTextBased()) {
+      return { valid: false, error: 'Channel is not a text channel' };
+    }
+    return { valid: true, channel };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
 
 /**
  * Send gold price to specified channel
  */
-async function sendGoldPrice(client) {
+async function sendGoldPrice() {
+  const channelId = config.gold.channelId;
+  
+  if (!channelId) {
+    log.info('SCHEDULER', 'Gold broadcast skipped: No channel configured');
+    return;
+  }
+
+  if (!discordClient) {
+    log.error('SCHEDULER', 'Discord client not initialized');
+    return;
+  }
+
   try {
-    const channel = await client.channels.fetch(GOLD_BROADCAST_CHANNEL);
+    const { valid, channel, error } = await validateChannel(discordClient, channelId);
     
-    if (!channel) {
-      log.error('SCHEDULER', `Channel ${GOLD_BROADCAST_CHANNEL} not found`);
+    if (!valid) {
+      log.error('SCHEDULER', `Invalid channel ${channelId}: ${error}`);
       return;
     }
 
@@ -31,7 +60,7 @@ async function sendGoldPrice(client) {
       embeds: [embed],
     });
 
-    log.info('SCHEDULER', 'Gold price broadcast sent successfully');
+    log.info('SCHEDULER', `Gold price sent to #${channel.name}`);
   } catch (error) {
     log.error('SCHEDULER', `Failed to send gold price: ${error.message}`);
   }
@@ -41,27 +70,33 @@ async function sendGoldPrice(client) {
  * Start all scheduled tasks
  */
 export function startScheduler(client) {
-  // Daily gold price at 7:00 AM WIB (00:00 UTC = 07:00 WIB)
-  // WIB is UTC+7, so 7 AM WIB = 0 AM UTC
-  const goldPriceTask = cron.schedule('0 0 * * *', () => {
-    log.info('SCHEDULER', 'Running daily gold price broadcast...');
-    sendGoldPrice(client);
-  }, {
-    timezone: 'Asia/Jakarta',
-    scheduled: true,
+  discordClient = client;
+
+  // Check if gold channel is configured
+  if (!config.gold.channelId) {
+    log.info('SCHEDULER', 'Gold broadcast disabled: GOLD_CHANNEL_ID not set');
+    return [];
+  }
+
+  // Validate channel on startup
+  validateChannel(client, config.gold.channelId).then(({ valid, channel, error }) => {
+    if (valid) {
+      log.info('SCHEDULER', `Gold broadcast channel: #${channel.name} (${config.gold.channelId})`);
+    } else {
+      log.error('SCHEDULER', `Invalid GOLD_CHANNEL_ID: ${error}`);
+    }
   });
 
-  // Actually schedule for 7 AM Jakarta time
-  const goldPriceTask7AM = cron.schedule('0 7 * * *', () => {
+  // Schedule daily gold price at 7 AM Jakarta time
+  const goldPriceTask = cron.schedule(config.gold.broadcastTime, () => {
     log.info('SCHEDULER', 'Running 7 AM gold price broadcast...');
-    sendGoldPrice(client);
+    sendGoldPrice();
   }, {
-    timezone: 'Asia/Jakarta',
+    timezone: config.gold.timezone,
     scheduled: true,
   });
 
-  scheduledTasks.push(goldPriceTask7AM);
-
+  scheduledTasks.push(goldPriceTask);
   log.info('SCHEDULER', 'Daily gold price scheduled for 07:00 WIB');
 
   return scheduledTasks;
@@ -73,14 +108,15 @@ export function startScheduler(client) {
 export function stopScheduler() {
   scheduledTasks.forEach(task => task.stop());
   scheduledTasks = [];
+  discordClient = null;
   log.info('SCHEDULER', 'All scheduled tasks stopped');
 }
 
 /**
- * Manually trigger gold price broadcast
+ * Manually trigger gold price broadcast (for testing)
  */
-export async function triggerGoldBroadcast(client) {
-  await sendGoldPrice(client);
+export async function triggerGoldBroadcast() {
+  await sendGoldPrice();
 }
 
 export default {
