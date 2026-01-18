@@ -14,6 +14,24 @@ let discordClient = null;
 let testInterval = null;
 
 /**
+ * Get greeting based on Jakarta time
+ */
+function getGreeting() {
+  const jakartaTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+  const hour = new Date(jakartaTime).getHours();
+  
+  if (hour >= 5 && hour < 11) {
+    return { emoji: '🌅', text: 'Selamat Pagi' };
+  } else if (hour >= 11 && hour < 15) {
+    return { emoji: '☀️', text: 'Selamat Siang' };
+  } else if (hour >= 15 && hour < 19) {
+    return { emoji: '🌆', text: 'Selamat Sore' };
+  } else {
+    return { emoji: '🌙', text: 'Selamat Malam' };
+  }
+}
+
+/**
  * Validate channel exists and bot has access
  */
 async function validateChannel(client, channelId) {
@@ -48,9 +66,10 @@ async function sendGoldPrice() {
     }
 
     const embed = await getGoldPriceEmbed();
+    const { emoji, text } = getGreeting();
     
     await channel.send({
-      content: '🌅 **Selamat Pagi!** Berikut update harga emas hari ini:',
+      content: `${emoji} **${text}!** Berikut update harga emas hari ini:`,
       embeds: [embed],
     });
 
@@ -77,12 +96,16 @@ async function sendNews() {
     }
 
     const embed = await getNewsEmbed();
+    const { emoji, text } = getGreeting();
     
-    const hour = new Date().getHours();
-    let greeting = '📰 **Berita Terkini!**';
-    if (hour < 10) greeting = '🌅 **Selamat Pagi!** Berikut berita terpopuler:';
-    else if (hour < 15) greeting = '☀️ **Selamat Siang!** Update berita terkini:';
-    else greeting = '🌆 **Selamat Sore!** Jangan lewatkan berita hari ini:';
+    const greetingMessages = {
+      'Selamat Pagi': 'Berikut berita terpopuler:',
+      'Selamat Siang': 'Update berita terkini:',
+      'Selamat Sore': 'Jangan lewatkan berita hari ini:',
+      'Selamat Malam': 'Berita terkini untuk kamu:',
+    };
+    
+    const greeting = `${emoji} **${text}!** ${greetingMessages[text] || 'Berikut berita terpopuler:'}`;
 
     await channel.send({
       content: greeting,
