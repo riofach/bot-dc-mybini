@@ -3,15 +3,17 @@
  * Register and handle slash commands
  */
 
-import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { REST, Routes, SlashCommandBuilder, AttachmentBuilder } from 'discord.js';
 import { config } from '../config/config.js';
 import { getCurrentProvider, switchProvider, getStats } from '../services/aiService.js';
 import { getCurrentKeyIndex as getGeminiKeyIndex, getTotalKeys as getGeminiTotalKeys } from '../services/geminiService.js';
 import { getCurrentKeyIndex as getGroqKeyIndex, getTotalKeys as getGroqTotalKeys } from '../services/groqService.js';
 import { clearChannel, getMemoryStats } from '../services/memoryService.js';
 import { getGoldPriceEmbed } from '../services/goldService.js';
+import { generateImageUrl } from '../services/imageService.js';
 import { getUnauthorizedResponse } from '../utils/personality.js';
 import { log } from '../utils/logger.js';
+import axios from 'axios';
 
 // Track bot start time for uptime
 const startTime = Date.now();
@@ -57,6 +59,33 @@ const commands = [
       subcommand
         .setName('emas')
         .setDescription('Lihat harga emas hari ini 📊')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('imagine')
+        .setDescription('Generate gambar dengan AI 🎨')
+        .addStringOption(option =>
+          option
+            .setName('prompt')
+            .setDescription('Deskripsi gambar yang ingin dibuat')
+            .setRequired(true)
+        )
+        .addIntegerOption(option =>
+          option
+            .setName('width')
+            .setDescription('Lebar gambar (256-1920, default: 1024)')
+            .setRequired(false)
+            .setMinValue(256)
+            .setMaxValue(1920)
+        )
+        .addIntegerOption(option =>
+          option
+            .setName('height')
+            .setDescription('Tinggi gambar (256-1920, default: 1024)')
+            .setRequired(false)
+            .setMinValue(256)
+            .setMaxValue(1920)
+        )
     ),
 ];
 
@@ -112,7 +141,7 @@ export async function handleCommand(interaction) {
   log.discord(`Command: /mybini ${subcommand} by ${interaction.user.tag}`);
 
   // Commands that don't require owner
-  const publicCommands = ['ping', 'emas'];
+  const publicCommands = ['ping', 'emas', 'imagine'];
 
   // Check if user is owner for restricted commands
   if (!publicCommands.includes(subcommand) && interaction.user.id !== config.ownerId) {
@@ -139,6 +168,9 @@ export async function handleCommand(interaction) {
         break;
       case 'emas':
         await handleGold(interaction);
+        break;
+      case 'imagine':
+        await handleImagine(interaction);
         break;
       default:
         await interaction.reply({
@@ -284,7 +316,7 @@ async function handlePing(interaction) {
  * Handle /mybini emas - Gold Price Command (PUBLIC)
  */
 async function handleGold(interaction) {
-  await interaction.deferReply(); // Gold fetch might take a while
+  await interaction.deferReply();
 
   try {
     const embed = await getGoldPriceEmbed();
@@ -299,6 +331,84 @@ async function handleGold(interaction) {
     console.error('[GOLD] Error:', error);
     await interaction.editReply({
       content: '⚠️ Maaf, gagal mengambil data harga emas. Coba lagi nanti ya!',
+    });
+  }
+}
+
+/**
+ * Handle /mybini imagine - Image Generation Command (PUBLIC)
+ */
+async function handleImagine(interaction) {
+  const prompt = interaction.options.getString('prompt');
+  const width = interaction.options.getInteger('width') || 1024;
+  const height = interaction.options.getInteger('height') || 1024;
+
+  await interaction.deferReply();
+
+  try {
+    // Generate image URL
+    const imageData = generateImageUrl(prompt, { width, height });
+    
+    log.discord(`Generating image: ${width}x${height} - "${prompt.substring(0, 30)}..."`);
+
+    // Fetch the image
+    const response = await axios.get(imageData.url, {
+      responseType: 'arraybuffer',
+      timeout: 60000, // 60 second timeout for image generation
+    });
+
+    // Create attachment from buffer
+    const attachment = new AttachmentBuilder(Buffer.from(response.data), {
+      name: 'generated-image.png',
+    });
+
+    // Create embed
+    const embed = {
+      color: 0x9B59B6,
+      title: '🎨 AI Generated Image',
+      description: `**Prompt:** ${prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt}`,
+      image: {
+        url: 'attachment://generated-image.png',
+      },
+      fields: [
+        {
+          name: '📐 Size',
+          value: `${imageData.width}x${imageData.height}`,
+          inline: true,
+        },
+        {
+          name: '🎲 Seed',
+          value: `${imageData.seed}`,
+          inline: true,
+        },
+      ],
+      footer: {
+        text: `Requested by ${interaction.user.tag} • Powered by Pollinations.ai`,
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    await interaction.editReply({
+      embeds: [embed],
+      files: [attachment],
+    });
+
+    log.discord(`Image generated for ${interaction.user.tag}`);
+  } catch (error) {
+    console.error('[IMAGE] Error:', error);
+    
+    let errorMessage = '⚠️ Maaf, gagal generate gambar. ';
+    
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      errorMessage += 'Request timeout - coba lagi atau gunakan ukuran lebih kecil.';
+    } else if (error.response?.status === 400) {
+      errorMessage += 'Prompt tidak valid atau mengandung konten yang dilarang.';
+    } else {
+      errorMessage += 'Coba lagi nanti ya!';
+    }
+
+    await interaction.editReply({
+      content: errorMessage,
     });
   }
 }

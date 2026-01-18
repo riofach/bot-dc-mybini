@@ -12,6 +12,7 @@ MyBini adalah Discord AI Chatbot yang ramah dan helpful. Bot ini menggunakan Gem
 - **Conversation Memory**: Mengingat 10 pesan terakhir per channel
 - **Gold Price**: Harga emas harian dari harga-emas.org
 - **News Broadcast**: Berita terpopuler Indonesia 3x sehari
+- **Image Generation**: Generate gambar dengan AI menggunakan Pollinations.ai (FREE, No API Key!)
 
 ## 📡 Broadcast Features
 
@@ -107,9 +108,37 @@ Mention bot di channel manapun:
 |---------|--------|-------------|
 | `/mybini emas` | Everyone | Lihat harga emas hari ini |
 | `/mybini ping` | Everyone | Check bot latency |
+| `/mybini imagine <prompt>` | Everyone | Generate gambar dengan AI 🎨 |
 | `/mybini status` | Owner | Info bot: uptime, API, memory |
 | `/mybini switch <api>` | Owner | Manual switch API (gemini/groq) |
 | `/mybini clear` | Owner | Clear memory channel ini |
+
+### 🎨 Image Generation
+
+Generate gambar dengan AI menggunakan `/mybini imagine`:
+
+```
+/mybini imagine a cute cat wearing sunglasses
+/mybini imagine beautiful sunset at beach width:1920 height:1080
+/mybini imagine anime girl portrait width:768 height:1024
+```
+
+| Parameter | Required | Default | Range |
+|-----------|----------|---------|-------|
+| `prompt` | ✅ Yes | - | Deskripsi gambar |
+| `width` | ❌ No | 1024 | 256 - 1920 |
+| `height` | ❌ No | 1024 | 256 - 1920 |
+
+**Rekomendasi Size:**
+| Style | Width | Height |
+|-------|-------|--------|
+| Square (default) | 1024 | 1024 |
+| Portrait | 768 | 1024 |
+| Landscape | 1024 | 768 |
+| Wide/Wallpaper | 1280 | 720 |
+| Tall/Phone | 720 | 1280 |
+
+> 💡 **Powered by Pollinations.ai** - 100% FREE, no API key required!
 
 ## 🧪 Testing News Broadcast
 
@@ -161,6 +190,7 @@ Bot akan auto-start dengan Procfile.
 |---------|-------|
 | Gemini | 15 req/min, 1500 req/day |
 | Groq | 30 req/min, 6000 req/day |
+| Pollinations.ai | ∞ Unlimited (FREE!) |
 | Railway | 500 hours/month |
 | RSS Feeds | Unlimited |
 
@@ -182,6 +212,7 @@ Bot-Discord-MyBini/
 │   │   ├── memoryService.js  # Conversation memory
 │   │   ├── goldService.js    # Gold price fetcher
 │   │   ├── newsService.js    # News RSS fetcher
+│   │   ├── imageService.js   # Image generation (Pollinations.ai)
 │   │   └── schedulerService.js # Cron jobs
 │   └── utils/
 │       ├── personality.js    # Bot personality
