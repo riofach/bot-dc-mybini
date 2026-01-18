@@ -36,9 +36,12 @@ const groqApiKeys = parseApiKeys(process.env.GROQ_API_KEY);
 
 console.log(`[CONFIG] Gemini: ${geminiApiKeys.length} key(s) | Groq: ${groqApiKeys.length} key(s)`);
 
-// Gold broadcast channel (optional)
+// Log optional channels
 if (process.env.GOLD_CHANNEL_ID) {
-  console.log(`[CONFIG] Gold broadcast channel: ${process.env.GOLD_CHANNEL_ID}`);
+  console.log(`[CONFIG] Gold channel: ${process.env.GOLD_CHANNEL_ID}`);
+}
+if (process.env.NEWS_CHANNEL_ID) {
+  console.log(`[CONFIG] News channel: ${process.env.NEWS_CHANNEL_ID}`);
 }
 
 export const config = {
@@ -63,6 +66,16 @@ export const config = {
     channelId: process.env.GOLD_CHANNEL_ID || null,
     broadcastTime: '0 7 * * *', // 07:00 every day
     timezone: 'Asia/Jakarta',
+  },
+
+  // News broadcast settings
+  news: {
+    channelId: process.env.NEWS_CHANNEL_ID || null,
+    // 3x daily: 07:00, 12:00, 18:00 WIB
+    broadcastTimes: ['0 7 * * *', '0 12 * * *', '0 18 * * *'],
+    timezone: 'Asia/Jakarta',
+    // Testing mode: send every 30 seconds
+    testMode: process.env.NEWS_TEST_MODE === 'true',
   },
 
   memory: {

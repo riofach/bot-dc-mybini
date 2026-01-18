@@ -11,7 +11,21 @@ MyBini adalah Discord AI Chatbot yang ramah dan helpful. Bot ini menggunakan Gem
 - **Multi API Keys**: Support multiple API keys dengan rotasi otomatis
 - **Conversation Memory**: Mengingat 10 pesan terakhir per channel
 - **Gold Price**: Harga emas harian dari harga-emas.org
-- **Scheduled Broadcast**: Auto kirim harga emas setiap jam 7 pagi WIB
+- **News Broadcast**: Berita terpopuler Indonesia 3x sehari
+
+## 📡 Broadcast Features
+
+| Feature | Schedule | Channel |
+|---------|----------|---------|
+| 💰 Harga Emas | 07:00 WIB | `GOLD_CHANNEL_ID` |
+| 📰 Berita Terpopuler | 07:00, 12:00, 18:00 WIB | `NEWS_CHANNEL_ID` |
+
+### Sumber Berita
+- CNN Indonesia
+- Tempo
+- Antara
+- Republika
+- Tribun News
 
 ## 🚀 Setup
 
@@ -45,8 +59,12 @@ GEMINI_API_KEY=key1,key2,key3
 GROQ_API_KEY=key1,key2
 OWNER_ID=your_discord_user_id
 
-# Optional - Gold Price Broadcast
-GOLD_CHANNEL_ID=your_channel_id
+# Optional - Broadcast Channels
+GOLD_CHANNEL_ID=your_gold_channel_id
+NEWS_CHANNEL_ID=your_news_channel_id
+
+# Testing (set to 'true' for testing news every 30 seconds)
+# NEWS_TEST_MODE=true
 ```
 
 ### 4. Get API Keys
@@ -56,7 +74,7 @@ GOLD_CHANNEL_ID=your_channel_id
 | Discord Bot Token | [Discord Developer Portal](https://discord.com/developers/applications) |
 | Gemini API Key | [Google AI Studio](https://aistudio.google.com/app/apikey) |
 | Groq API Key | [Groq Console](https://console.groq.com/keys) |
-| Owner ID | Enable Developer Mode di Discord → Klik kanan profile → Copy User ID |
+| Owner ID | Enable Developer Mode → Klik kanan profile → Copy User ID |
 | Channel ID | Klik kanan channel → Copy Channel ID |
 
 ### 5. Run Bot
@@ -93,15 +111,24 @@ Mention bot di channel manapun:
 | `/mybini switch <api>` | Owner | Manual switch API (gemini/groq) |
 | `/mybini clear` | Owner | Clear memory channel ini |
 
-### Gold Price Feature
+## 🧪 Testing News Broadcast
 
-- **Manual**: Ketik `/mybini emas` untuk lihat harga emas terkini
-- **Auto Broadcast**: Set `GOLD_CHANNEL_ID` di `.env` untuk auto broadcast jam 7 pagi WIB
+Untuk test news broadcast setiap 30 detik:
 
-Data harga emas dari [harga-emas.org](https://harga-emas.org):
-- Harga spot USD dan IDR per gram/oz
-- Harga emas Antam
-- Kurs USD/IDR
+1. Set di `.env`:
+   ```env
+   NEWS_CHANNEL_ID=your_channel_id
+   NEWS_TEST_MODE=true
+   ```
+
+2. Jalankan bot:
+   ```bash
+   npm run dev
+   ```
+
+3. Bot akan kirim 1 berita setiap 30 detik ke channel tersebut
+
+4. Setelah test selesai, hapus atau set `NEWS_TEST_MODE=false`
 
 ## 🚂 Deployment (Railway)
 
@@ -113,6 +140,7 @@ Data harga emas dari [harga-emas.org](https://harga-emas.org):
    - `GROQ_API_KEY`
    - `OWNER_ID`
    - `GOLD_CHANNEL_ID` (optional)
+   - `NEWS_CHANNEL_ID` (optional)
 4. Deploy!
 
 Bot akan auto-start dengan Procfile.
@@ -124,6 +152,7 @@ Bot akan auto-start dengan Procfile.
 - @google/generative-ai (Gemini)
 - groq-sdk (Groq/Llama 3.3 70B)
 - node-cron (Scheduler)
+- rss-parser (News RSS)
 - axios & cheerio (Web scraping)
 
 ## 📊 Free Tier Limits
@@ -133,6 +162,7 @@ Bot akan auto-start dengan Procfile.
 | Gemini | 15 req/min, 1500 req/day |
 | Groq | 30 req/min, 6000 req/day |
 | Railway | 500 hours/month |
+| RSS Feeds | Unlimited |
 
 ## 📁 Project Structure
 
@@ -151,6 +181,7 @@ Bot-Discord-MyBini/
 │   │   ├── groqService.js    # Groq API
 │   │   ├── memoryService.js  # Conversation memory
 │   │   ├── goldService.js    # Gold price fetcher
+│   │   ├── newsService.js    # News RSS fetcher
 │   │   └── schedulerService.js # Cron jobs
 │   └── utils/
 │       ├── personality.js    # Bot personality

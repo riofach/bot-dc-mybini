@@ -1,15 +1,17 @@
 /**
  * Scheduler Service
- * Handle scheduled tasks like daily gold price broadcast
+ * Handle scheduled tasks: gold price & news broadcast
  */
 
 import cron from 'node-cron';
 import { config } from '../config/config.js';
 import { getGoldPriceEmbed } from './goldService.js';
+import { getNewsEmbed, getSingleNews } from './newsService.js';
 import { log } from '../utils/logger.js';
 
 let scheduledTasks = [];
 let discordClient = null;
+let testInterval = null;
 
 /**
  * Validate channel exists and bot has access
@@ -35,21 +37,13 @@ async function validateChannel(client, channelId) {
 async function sendGoldPrice() {
   const channelId = config.gold.channelId;
   
-  if (!channelId) {
-    log.info('SCHEDULER', 'Gold broadcast skipped: No channel configured');
-    return;
-  }
-
-  if (!discordClient) {
-    log.error('SCHEDULER', 'Discord client not initialized');
-    return;
-  }
+  if (!channelId || !discordClient) return;
 
   try {
     const { valid, channel, error } = await validateChannel(discordClient, channelId);
     
     if (!valid) {
-      log.error('SCHEDULER', `Invalid channel ${channelId}: ${error}`);
+      log.error('GOLD', `Invalid channel: ${error}`);
       return;
     }
 
@@ -60,9 +54,75 @@ async function sendGoldPrice() {
       embeds: [embed],
     });
 
-    log.info('SCHEDULER', `Gold price sent to #${channel.name}`);
+    log.info('GOLD', `Sent to #${channel.name}`);
   } catch (error) {
-    log.error('SCHEDULER', `Failed to send gold price: ${error.message}`);
+    log.error('GOLD', `Failed: ${error.message}`);
+  }
+}
+
+/**
+ * Send news to specified channel
+ */
+async function sendNews() {
+  const channelId = config.news.channelId;
+  
+  if (!channelId || !discordClient) return;
+
+  try {
+    const { valid, channel, error } = await validateChannel(discordClient, channelId);
+    
+    if (!valid) {
+      log.error('NEWS', `Invalid channel: ${error}`);
+      return;
+    }
+
+    const embed = await getNewsEmbed();
+    
+    const hour = new Date().getHours();
+    let greeting = '📰 **Berita Terkini!**';
+    if (hour < 10) greeting = '🌅 **Selamat Pagi!** Berikut berita terpopuler:';
+    else if (hour < 15) greeting = '☀️ **Selamat Siang!** Update berita terkini:';
+    else greeting = '🌆 **Selamat Sore!** Jangan lewatkan berita hari ini:';
+
+    await channel.send({
+      content: greeting,
+      embeds: [embed],
+    });
+
+    log.info('NEWS', `Sent to #${channel.name}`);
+  } catch (error) {
+    log.error('NEWS', `Failed: ${error.message}`);
+  }
+}
+
+/**
+ * Send single test news (for testing)
+ */
+async function sendTestNews() {
+  const channelId = config.news.channelId;
+  
+  if (!channelId || !discordClient) return;
+
+  try {
+    const { valid, channel, error } = await validateChannel(discordClient, channelId);
+    
+    if (!valid) {
+      log.error('NEWS-TEST', `Invalid channel: ${error}`);
+      return;
+    }
+
+    const embed = await getSingleNews();
+    
+    if (!embed) {
+      log.error('NEWS-TEST', 'No news available');
+      return;
+    }
+
+    await channel.send({ embeds: [embed] });
+
+    log.info('NEWS-TEST', `Test news sent to #${channel.name}`);
+  } catch (error) {
+    log.error('NEWS-TEST', `Failed: ${error.message}`);
   }
 }
 
@@ -72,32 +132,72 @@ async function sendGoldPrice() {
 export function startScheduler(client) {
   discordClient = client;
 
-  // Check if gold channel is configured
-  if (!config.gold.channelId) {
-    log.info('SCHEDULER', 'Gold broadcast disabled: GOLD_CHANNEL_ID not set');
-    return [];
+  // ============ GOLD PRICE SCHEDULER ============
+  if (config.gold.channelId) {
+    validateChannel(client, config.gold.channelId).then(({ valid, channel, error }) => {
+      if (valid) {
+        log.info('SCHEDULER', `Gold channel: #${channel.name}`);
+      } else {
+        log.error('SCHEDULER', `Invalid GOLD_CHANNEL_ID: ${error}`);
+      }
+    });
+
+    const goldTask = cron.schedule(config.gold.broadcastTime, () => {
+      log.info('SCHEDULER', 'Running gold price broadcast...');
+      sendGoldPrice();
+    }, {
+      timezone: config.gold.timezone,
+      scheduled: true,
+    });
+
+    scheduledTasks.push(goldTask);
+    log.info('SCHEDULER', 'Gold: 07:00 WIB daily');
+  } else {
+    log.info('SCHEDULER', 'Gold broadcast disabled');
   }
 
-  // Validate channel on startup
-  validateChannel(client, config.gold.channelId).then(({ valid, channel, error }) => {
-    if (valid) {
-      log.info('SCHEDULER', `Gold broadcast channel: #${channel.name} (${config.gold.channelId})`);
+  // ============ NEWS SCHEDULER ============
+  if (config.news.channelId) {
+    validateChannel(client, config.news.channelId).then(({ valid, channel, error }) => {
+      if (valid) {
+        log.info('SCHEDULER', `News channel: #${channel.name}`);
+      } else {
+        log.error('SCHEDULER', `Invalid NEWS_CHANNEL_ID: ${error}`);
+      }
+    });
+
+    // Check if test mode is enabled
+    if (config.news.testMode) {
+      log.info('SCHEDULER', '⚠️ NEWS TEST MODE: Sending every 30 seconds');
+      
+      // Send first test immediately after 5 seconds
+      setTimeout(() => {
+        sendTestNews();
+      }, 5000);
+
+      // Then every 30 seconds
+      testInterval = setInterval(() => {
+        sendTestNews();
+      }, 30000);
+      
     } else {
-      log.error('SCHEDULER', `Invalid GOLD_CHANNEL_ID: ${error}`);
+      // Normal mode: 3x daily
+      for (const time of config.news.broadcastTimes) {
+        const newsTask = cron.schedule(time, () => {
+          log.info('SCHEDULER', 'Running news broadcast...');
+          sendNews();
+        }, {
+          timezone: config.news.timezone,
+          scheduled: true,
+        });
+
+        scheduledTasks.push(newsTask);
+      }
+      log.info('SCHEDULER', 'News: 07:00, 12:00, 18:00 WIB daily');
     }
-  });
-
-  // Schedule daily gold price at 7 AM Jakarta time
-  const goldPriceTask = cron.schedule(config.gold.broadcastTime, () => {
-    log.info('SCHEDULER', 'Running 7 AM gold price broadcast...');
-    sendGoldPrice();
-  }, {
-    timezone: config.gold.timezone,
-    scheduled: true,
-  });
-
-  scheduledTasks.push(goldPriceTask);
-  log.info('SCHEDULER', 'Daily gold price scheduled for 07:00 WIB');
+  } else {
+    log.info('SCHEDULER', 'News broadcast disabled');
+  }
 
   return scheduledTasks;
 }
@@ -108,19 +208,30 @@ export function startScheduler(client) {
 export function stopScheduler() {
   scheduledTasks.forEach(task => task.stop());
   scheduledTasks = [];
+  
+  if (testInterval) {
+    clearInterval(testInterval);
+    testInterval = null;
+  }
+  
   discordClient = null;
-  log.info('SCHEDULER', 'All scheduled tasks stopped');
+  log.info('SCHEDULER', 'All tasks stopped');
 }
 
 /**
- * Manually trigger gold price broadcast (for testing)
+ * Manually trigger broadcasts (for testing)
  */
 export async function triggerGoldBroadcast() {
   await sendGoldPrice();
+}
+
+export async function triggerNewsBroadcast() {
+  await sendNews();
 }
 
 export default {
   startScheduler,
   stopScheduler,
   triggerGoldBroadcast,
+  triggerNewsBroadcast,
 };
