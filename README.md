@@ -13,6 +13,7 @@ MyBini adalah Discord AI Chatbot yang ramah dan helpful. Bot ini menggunakan Gem
 - **Gold Price**: Harga emas harian dari harga-emas.org
 - **News Broadcast**: Berita terpopuler Indonesia 3x sehari
 - **Image Generation**: Generate gambar dengan AI menggunakan Pollinations.ai (FREE, No API Key!)
+- **Roblox Player Lookup**: Cek profil, avatar, dan status pemain Roblox 🎮
 
 ## 📡 Broadcast Features
 
@@ -109,6 +110,7 @@ Mention bot di channel manapun:
 | `/mybini emas` | Everyone | Lihat harga emas hari ini |
 | `/mybini ping` | Everyone | Check bot latency |
 | `/mybini imagine <prompt>` | Everyone | Generate gambar dengan AI 🎨 |
+| `/mybini roblox player <username>` | Everyone | Lookup profil pemain Roblox 🎮 |
 | `/mybini status` | Owner | Info bot: uptime, API, memory |
 | `/mybini switch <api>` | Owner | Manual switch API (gemini/groq) |
 | `/mybini clear` | Owner | Clear memory channel ini |
@@ -139,6 +141,29 @@ Generate gambar dengan AI menggunakan `/mybini imagine`:
 | Tall/Phone | 720 | 1280 |
 
 > 💡 **Powered by Pollinations.ai** - 100% FREE, no API key required!
+
+### 🎮 Roblox Player Lookup
+
+Cek profil pemain Roblox lengkap dengan avatar dan status online:
+
+```
+/mybini roblox player Builderman
+/mybini roblox player NasiSomay
+/mybini roblox player KreekCraft
+```
+
+**Informasi yang ditampilkan:**
+| Data | Keterangan |
+|------|------------|
+| 👤 **Profile** | Username, Display Name, User ID, Bio |
+| 📅 **Account Age** | Tanggal join + umur akun |
+| 👥 **Social Stats** | Friends, Followers, Following |
+| 🖼️ **Avatar** | Full-body avatar render |
+| 🟢 **Status** | Offline / Online / In-Game + nama game |
+| ✅ **Verified** | Badge verified (jika ada) |
+| 🚫 **Banned** | Status banned (jika ada) |
+
+> 💡 **Powered by Roblox Public API** - 100% FREE, no API key required!
 
 ## 🧪 Testing News Broadcast
 
@@ -191,6 +216,7 @@ Bot akan auto-start dengan Procfile.
 | Gemini | 15 req/min, 1500 req/day |
 | Groq | 30 req/min, 6000 req/day |
 | Pollinations.ai | ∞ Unlimited (FREE!) |
+| Roblox API | ~60 req/min (FREE!) |
 | Railway | 500 hours/month |
 | RSS Feeds | Unlimited |
 
@@ -213,6 +239,7 @@ Bot-Discord-MyBini/
 │   │   ├── goldService.js    # Gold price fetcher
 │   │   ├── newsService.js    # News RSS fetcher
 │   │   ├── imageService.js   # Image generation (Pollinations.ai)
+│   │   ├── robloxService.js  # Roblox player lookup
 │   │   └── schedulerService.js # Cron jobs
 │   └── utils/
 │       ├── personality.js    # Bot personality

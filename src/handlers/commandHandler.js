@@ -11,6 +11,7 @@ import { getCurrentKeyIndex as getGroqKeyIndex, getTotalKeys as getGroqTotalKeys
 import { clearChannel, getMemoryStats } from '../services/memoryService.js';
 import { getGoldPriceEmbed } from '../services/goldService.js';
 import { generateImageUrl } from '../services/imageService.js';
+import { getPlayerInfo, buildPlayerEmbed } from '../services/robloxService.js';
 import { getUnauthorizedResponse } from '../utils/personality.js';
 import { log } from '../utils/logger.js';
 import axios from 'axios';
@@ -86,6 +87,22 @@ const commands = [
             .setMinValue(256)
             .setMaxValue(1920)
         )
+    )
+    .addSubcommandGroup(group =>
+      group
+        .setName('roblox')
+        .setDescription('Roblox related commands 🎮')
+        .addSubcommand(subcommand =>
+          subcommand
+            .setName('player')
+            .setDescription('Lookup profil pemain Roblox 👤')
+            .addStringOption(option =>
+              option
+                .setName('username')
+                .setDescription('Username Roblox yang ingin dicari')
+                .setRequired(true)
+            )
+        )
     ),
 ];
 
@@ -137,14 +154,28 @@ export async function handleCommand(interaction) {
   
   if (commandName !== 'mybini') return;
 
-  const subcommand = interaction.options.getSubcommand();
-  log.discord(`Command: /mybini ${subcommand} by ${interaction.user.tag}`);
+  // Check if it's a subcommand group (like /mybini roblox player)
+  let subcommandGroup = null;
+  let subcommand = null;
+  
+  try {
+    subcommandGroup = interaction.options.getSubcommandGroup(false);
+    subcommand = interaction.options.getSubcommand();
+  } catch {
+    subcommand = interaction.options.getSubcommand();
+  }
+
+  const fullCommand = subcommandGroup 
+    ? `${subcommandGroup} ${subcommand}` 
+    : subcommand;
+    
+  log.discord(`Command: /mybini ${fullCommand} by ${interaction.user.tag}`);
 
   // Commands that don't require owner
-  const publicCommands = ['ping', 'emas', 'imagine'];
+  const publicCommands = ['ping', 'emas', 'imagine', 'roblox player'];
 
   // Check if user is owner for restricted commands
-  if (!publicCommands.includes(subcommand) && interaction.user.id !== config.ownerId) {
+  if (!publicCommands.includes(fullCommand) && interaction.user.id !== config.ownerId) {
     await interaction.reply({
       content: getUnauthorizedResponse(),
       ephemeral: true,
@@ -153,6 +184,22 @@ export async function handleCommand(interaction) {
   }
 
   try {
+    // Handle subcommand groups first
+    if (subcommandGroup === 'roblox') {
+      switch (subcommand) {
+        case 'player':
+          await handleRobloxPlayer(interaction);
+          return;
+        default:
+          await interaction.reply({
+            content: 'Unknown roblox subcommand!',
+            ephemeral: true,
+          });
+          return;
+      }
+    }
+
+    // Handle regular subcommands
     switch (subcommand) {
       case 'status':
         await handleStatus(interaction);
@@ -409,6 +456,41 @@ async function handleImagine(interaction) {
 
     await interaction.editReply({
       content: errorMessage,
+    });
+  }
+}
+
+/**
+ * Handle /mybini roblox player - Roblox Player Lookup (PUBLIC)
+ */
+async function handleRobloxPlayer(interaction) {
+  const username = interaction.options.getString('username');
+
+  await interaction.deferReply();
+
+  try {
+    log.discord(`Roblox lookup: ${username}`);
+
+    // Get player info from Roblox API
+    const playerData = await getPlayerInfo(username);
+    
+    // Build embed
+    const embed = buildPlayerEmbed(playerData);
+
+    await interaction.editReply({
+      embeds: [embed],
+    });
+
+    if (playerData.success) {
+      log.discord(`Roblox player found: ${playerData.username} (ID: ${playerData.userId})`);
+    } else {
+      log.discord(`Roblox player not found: ${username}`);
+    }
+  } catch (error) {
+    console.error('[ROBLOX] Error:', error);
+    
+    await interaction.editReply({
+      content: '⚠️ Maaf, gagal mengambil data dari Roblox. Coba lagi nanti ya!',
     });
   }
 }

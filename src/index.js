@@ -35,7 +35,7 @@ client.once(Events.ClientReady, async (c) => {
   startScheduler(client);
 
   // Set bot status
-  client.user.setActivity('for @MyBini | /mybini emas', { type: 3 });
+  client.user.setActivity('for @MyBini | /mybini emas | /mybini imagine', { type: 3 });
 });
 
 // Message event
